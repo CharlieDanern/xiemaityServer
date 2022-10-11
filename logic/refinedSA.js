@@ -21,7 +21,8 @@ function logic(fileName, score) {
       }
    }
    console.log("target bay is: ");
-   console.log(targetBay);
+   console.table(targetBay);
+   console.table(targetCY);
 
    // let [uniqueCY, targetCY] = analyzeCY();
 
