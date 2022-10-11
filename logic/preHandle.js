@@ -59,7 +59,7 @@ function analyzeBay(Projections) {
       for (var n = 0; n < uniqueWeightClass.length; n++) {
          let count = 0;
          for (var m = 0; m < Projections.length; m++) {
-            if (Projections[m].Bay.slice(0, 2) === bay && uniqueWeightClass[n] === Projections[m].Class) {
+            if (Projections[m].Bay.slice(0, 2) == bay && uniqueWeightClass[n] == Projections[m].Class) {
                count++;
             }
          }
@@ -78,9 +78,8 @@ function analyzeBay(Projections) {
       allBays.push(Projections[i].Bay.slice(0, 2));
       allDecks.push(Projections[i].Bay);
    }
-   let uniqueBay = [...new Set(allBays)].sort((a, b) => {
-      return a - b;
-   });
+
+   let uniqueBay = [...new Set(allBays)].sort();
    let uinqueDeck = [...new Set(allDecks)];
 
    let bayWithWC = [];
@@ -99,7 +98,7 @@ function analyzeCY(yardInput) {
       for (var n = 0; n < uniqueWeightClass.length; n++) {
          let count = 0;
          for (var m = 0; m < yardInput.length; m++) {
-            if (yardInput[m].Position.slice(0, 4) === CY && uniqueWeightClass[n] === yardInput[m].Class) {
+            if (yardInput[m].Position.slice(0, 4) == CY && uniqueWeightClass[n] == yardInput[m].Class) {
                count++;
             }
          }

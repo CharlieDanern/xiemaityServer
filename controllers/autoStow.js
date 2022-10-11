@@ -26,7 +26,8 @@ export const upload = (req, res) => {
 
 import { logic } from "../logic/refinedSA.js";
 export const result = (req, res) => {
+   res.setHeader("Access-Control-Allow-Origin", "*");
+   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
    const [devi, finalResult] = logic(req.body.fileName, req.body.score);
-
    res.status(200).json({ devi, finalResult });
 };

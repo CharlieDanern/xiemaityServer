@@ -8,7 +8,6 @@ function logic(fileName, score) {
    const bayLength = targetBay.length;
    const CYLength = targetCY.length;
 
-   // let [uniqueBay, targetBay] = analyzeBay();
    const halfBay = Math.floor(targetBay.length / 2) + 1;
 
    for (var i = 0; i < targetBay.length; i++) {
@@ -20,15 +19,10 @@ function logic(fileName, score) {
          targetBay[i][uniqueWeightClass.length] = targetBay[i][uniqueWeightClass.length] <= 42 ? 0 : 1;
       }
    }
-   console.log("target bay is: ");
-   console.table(targetBay);
-   console.table(targetCY);
-
-   // let [uniqueCY, targetCY] = analyzeCY();
 
    function Initialize() {
       let Sample = [];
-      const breakpoint = Math.round(CYLength / bayLength);
+      const breakpoint = Math.floor(CYLength / bayLength); // vãi cả lz .floor và .round :(
 
       for (var i = 0; i < bayLength - 1; i++) {
          Sample[i] = targetCY.slice(i * breakpoint, (i + 1) * breakpoint);
@@ -37,8 +31,6 @@ function logic(fileName, score) {
 
       return Sample;
    }
-
-   //console.log(util.inspect(Initialize(), false, 3, true));
 
    // function to calculate deviation, this should return the whole deviation i/o partial deviation
    function _deviation(Sam) {
@@ -234,6 +226,8 @@ function logic(fileName, score) {
          let currentSample = stateChange(lastSample);
          let currentCost = Cost(currentSample);
 
+         console.log(currentCost);
+
          if (currentCost > lastCost) {
             lastSample = currentSample;
             lastCost = currentCost;
@@ -267,10 +261,10 @@ function logic(fileName, score) {
 
       let restartTime = 0;
       while (Cost(res1) < targetScore) {
-         console.log(restartTime);
          [res1, res2, count] = simulatedAnnealing(targetScore);
          masterCount += count;
          restartTime++;
+         console.log(`restart time is: ${restartTime}`);
 
          if (restartTime > 3000) {
             targetScore -= 0.1;
@@ -285,7 +279,7 @@ function logic(fileName, score) {
       for (var i = 0; i < deviaaaa.length; i++) {
          sumDeviation[i] = arraySum(deviaaaa[i]);
       }
-      console.log(sumDeviation);
+      // console.log(sumDeviation);
 
       console.log(`The total loops it took is: ${masterCount}`);
       return res1;
@@ -338,9 +332,6 @@ function logic(fileName, score) {
       let result = tracebackCY(bestSample);
       let bestDeviation = _deviation(bestSample);
 
-      console.log(bestDeviation);
-      console.log(arraySum(bestDeviation[0]));
-
       for (var i = 0; i < bestDeviation.length; i++) {
          const length = bestDeviation[i].length;
          const _sum = arraySum(bestDeviation[i]);
@@ -371,7 +362,7 @@ function logic(fileName, score) {
          // _bestDeviation[uniqueBay[i]] = bestDeviation[i];
       }
       console.log("the result is:");
-      console.log(_bestDeviation);
+      console.table(_bestDeviation);
 
       let finalResult = {};
 
@@ -391,7 +382,7 @@ function logic(fileName, score) {
          finaly.push({ ID: tempp[i], Value: finalResult[tempp[i]] });
       }
 
-      console.log(finaly);
+      // console.log(finaly);
 
       return [_bestDeviation, finaly];
    }
