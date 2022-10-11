@@ -8,8 +8,15 @@ import autoStow from "./routes/autoStow.js";
 
 dotevn.config();
 const app = express();
-
 app.use(cors());
+
+// Add Access Control Allow Origin headers
+app.use((req, res, next) => {
+   res.setHeader("Access-Control-Allow-Origin", "*");
+   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+   next();
+});
+
 app.use(fileUpload());
 
 app.use(bodyParser.json({ limit: "30mb", extended: "true" }));
