@@ -269,7 +269,7 @@ function logic(fileName, score) {
          masterCount += count;
          restartTime++;
 
-         if (restartTime > 20000) {
+         if (restartTime > 3000) {
             targetScore -= 0.1;
             //[res1, res2, count] = simulatedAnnealing(targetScore);
             restartTime = 0;
