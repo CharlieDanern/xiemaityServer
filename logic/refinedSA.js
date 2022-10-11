@@ -20,6 +20,8 @@ function logic(fileName, score) {
          targetBay[i][uniqueWeightClass.length] = targetBay[i][uniqueWeightClass.length] <= 42 ? 0 : 1;
       }
    }
+   console.log("target bay is: ");
+   console.log(targetBay);
 
    // let [uniqueCY, targetCY] = analyzeCY();
 
