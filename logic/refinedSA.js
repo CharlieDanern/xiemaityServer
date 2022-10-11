@@ -226,7 +226,7 @@ function logic(fileName, score) {
          let currentSample = stateChange(lastSample);
          let currentCost = Cost(currentSample);
 
-         console.log(currentCost);
+         // console.log(currentCost);
 
          if (currentCost > lastCost) {
             lastSample = currentSample;
@@ -264,7 +264,7 @@ function logic(fileName, score) {
          [res1, res2, count] = simulatedAnnealing(targetScore);
          masterCount += count;
          restartTime++;
-         console.log(`restart time is: ${restartTime}`);
+         console.log(restartTime);
 
          if (restartTime > 3000) {
             targetScore -= 0.1;
