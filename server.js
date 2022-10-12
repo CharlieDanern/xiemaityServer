@@ -18,6 +18,10 @@ app.use(bodyParser.json({ limit: "30mb", extended: "true" }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: "true" }));
 app.use(haltOnTimedout);
 
+app.get("/", (req, res) => {
+   res.send("Hello World");
+});
+
 app.use("/autostow", autoStow);
 
 // Add Access Control Allow Origin headers
