@@ -1,6 +1,12 @@
-import util from "util";
+import fs from "fs";
 import { preHandle } from "./preHandle.js";
 import { compareArrays, shuffle, sumMultipleArray, arraySum, getLargest, getSmallest } from "./utils.js";
+
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.join(path.dirname(__filename), "../");
 
 // ***********************************  MAIN FUNCTION   *********************************** //
 function logic(fileName, score) {
@@ -106,16 +112,19 @@ function logic(fileName, score) {
       let Deviation = _deviation(Sam);
       let Receiver = Giver_Receiver(Deviation)[1];
       const standardPoint = 0.4 * (10 / (4 + uniqueWeightClass.length));
+      const maxDevi = 100;
 
       for (var i = 0; i < finalCandidatesPool.length; i++) {
-         let maxPoints = -100;
+         let maxPoints = 0;
          let l = 0;
          for (var j = 0; j < Receiver.length; j++) {
             let points = 0;
             let pos = Receiver[j];
 
             // ****************** check here ******************
-            if (arraySum(Deviation[pos]) < 0) points += 4;
+            if (arraySum(Deviation[pos]) < 0) {
+               points += 4;
+            }
             // ****************** check here ******************
 
             // ****************** YARD BLOCK ******************//
@@ -124,17 +133,13 @@ function logic(fileName, score) {
             }
 
             for (var k = 0; k < uniqueWeightClass.length; k++) {
-               if (Math.abs(Deviation[pos][k] + finalCandidatesPool[i][k]) <= Math.abs(Deviation[pos][k])) {
+               let ele = Math.abs(Deviation[pos][k] + finalCandidatesPool[i][k]);
+               if (ele <= Math.abs(Deviation[pos][k])) {
                   if (k == 0 || k == uniqueWeightClass.length - 1) {
-                     points += standardPoint * 3;
+                     // points += standardPoint * 3;
+                     points += (3 * standardPoint * (maxDevi - ele)) / maxDevi;
                   } else {
-                     points -= 0;
-                  }
-               } else {
-                  if (k == 0 || k == uniqueWeightClass.length - 1) {
-                     points += standardPoint;
-                  } else {
-                     points -= 0;
+                     points += (standardPoint * (maxDevi - ele)) / maxDevi;
                   }
                }
             }
@@ -165,7 +170,8 @@ function logic(fileName, score) {
       const Deviation = _deviation(Sam);
       let targetBayAmount = [];
       let totalContainer = 0;
-      const standardPoint = 0.4 * (10 / (4 + uniqueWeightClass.length));
+      const standardPoint = 0.5 * (10 / (4 + uniqueWeightClass.length));
+      const maxDevi = 10;
 
       for (var i = 0; i < targetBay.length; i++) {
          targetBayAmount[i] = arraySum(targetBay[i]);
@@ -179,24 +185,20 @@ function logic(fileName, score) {
          let elementPoints = 0;
          let sumPoints = arraySum(Deviation[i]) == 0 ? 4 : 0;
          for (var j = 0; j < Deviation[i].length; j++) {
-            if (Math.abs(Deviation[i][j]) <= 1) {
+            let ele = Math.abs(Deviation[i][j]);
+            if (ele <= maxDevi) {
                if (j == 0 || j == Deviation[i].length - 2) {
-                  elementPoints += 3 * standardPoint;
+                  elementPoints += (3 * standardPoint * (maxDevi - ele)) / maxDevi;
                } else if (j == Deviation[i].length - 1) {
-                  elementPoints += 2;
+                  elementPoints += (1 * (maxDevi - ele)) / maxDevi;
                } else {
-                  elementPoints += standardPoint;
+                  elementPoints += (standardPoint * (maxDevi - ele)) / maxDevi;
                }
             } else {
-               if (j == 0 || j == Deviation[i].length - 2) {
-                  elementPoints -= 0; //3 * 0.5 * Math.abs(Deviation[i][j]);
-               } else if (j == Deviation[i].length - 1) {
-                  elementPoints -= 0;
-               } else {
-                  elementPoints -= 0; //1 * 0.5 * Math.abs(Deviation[i][j]);
-               }
+               elementPoints = 0;
             }
          }
+         // console.log(`element point is: ${elementPoints}`);
          partialCost[i] = elementPoints + sumPoints;
          totalCost += (partialCost[i] * targetBayAmount[i]) / totalContainer;
       }
@@ -205,11 +207,9 @@ function logic(fileName, score) {
    }
 
    function simulatedAnnealing(targetCost) {
-      const startTemp = 10 ** 5;
-      const endTemp = 0.1;
-      const coolingRate = 0.95;
-
-      const maxCost = 10;
+      const startTemp = 10 ** 100;
+      const endTemp = 0.01;
+      const coolingRate = 0.999;
 
       let currentTemp = startTemp;
 
@@ -252,6 +252,8 @@ function logic(fileName, score) {
          count++;
       }
 
+      console.log(`total count is: ${count}`);
+
       return [bestSample, bestCost, count];
    }
 
@@ -264,9 +266,9 @@ function logic(fileName, score) {
          [res1, res2, count] = simulatedAnnealing(targetScore);
          masterCount += count;
          restartTime++;
-         console.log(restartTime);
+         console.log(`restartTime is ${restartTime}`);
 
-         if (restartTime > 3000) {
+         if (restartTime > 20) {
             targetScore -= 0.1;
             //[res1, res2, count] = simulatedAnnealing(targetScore);
             restartTime = 0;
@@ -393,6 +395,17 @@ function logic(fileName, score) {
 
    const endTime = new Date();
    console.log(`the time it took is: ${(endTime - startTime) / 1000} seconds`);
+
+   const deviResult = JSON.stringify({ devi, result });
+   try {
+      fs.writeFileSync(`${__dirname}/logic/Result/${fileName}.json`, deviResult, "utf-8");
+      const fileRead = JSON.parse(fs.readFileSync(`${__dirname}/logic/indicator/indicator.json`, "utf8"));
+      fileRead[`${fileName}`] = "ready";
+      const fileWrite = JSON.stringify(fileRead);
+      fs.writeFileSync(`${__dirname}/logic/indicator/indicator.json`, fileWrite, "utf8");
+   } catch (error) {
+      console.log(error);
+   }
 
    return [devi, result];
 }

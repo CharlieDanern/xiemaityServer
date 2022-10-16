@@ -71,4 +71,6 @@ function getSmallest(Array) {
    return tempArray.indexOf(Math.min(...Array));
 }
 
+//function to write into files.
+
 export { compareArrays, shuffle, sumMultipleArray, arraySum, getLargest, getSmallest };
