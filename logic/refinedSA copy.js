@@ -1,16 +1,6 @@
 import fs from "fs";
 import { preHandle } from "./preHandle.js";
-import {
-   compareArrays,
-   shuffle,
-   sumMultipleArray,
-   arraySum,
-   getLargest,
-   getSmallest,
-   sumAll,
-   minusArrays,
-   compare,
-} from "./utils.js";
+import { compareArrays, shuffle, sumMultipleArray, arraySum, getLargest, getSmallest } from "./utils.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -19,24 +9,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.join(path.dirname(__filename), "../");
 
 // ***********************************  MAIN FUNCTION   *********************************** //
-
-/**
- * we can specify whether vessel stowage is 'easy' or 'difficult' by adjusting the point system between
- * point_element & point_sameBlock
- * on a scale of 1-10, rate how 'difficult vessel stowage is
- * 10 : point_element is 4, point_sameBlock is 1
- * 1  : point_elemnt is 1, point_sameBlock is 4
- * */
-function logic(fileName, score, difficulty) {
+function logic(fileName, score) {
    const [uniqueWeightClass, Projections, yardInput, uniqueBay, targetBay, uniqueCY, targetCY] = preHandle(fileName);
    const bayLength = targetBay.length;
    const CYLength = targetCY.length;
-
-   const dummyValue = new Array(uniqueWeightClass.length + 1);
-
-   for (var i = 0; i < dummyValue.length; i++) {
-      dummyValue[i] = 0;
-   }
 
    const halfBay = Math.floor(targetBay.length / 2) + 1;
 
@@ -49,37 +25,6 @@ function logic(fileName, score, difficulty) {
          targetBay[i][uniqueWeightClass.length] = targetBay[i][uniqueWeightClass.length] <= 42 ? 0 : 1;
       }
    }
-
-   //Point System:
-   const point_total = 4;
-   const point_distance = 1;
-   const point_element = 1 + (3 / 9) * (difficulty - 1);
-   const point_sameBlock = 10 - point_total - point_distance - point_element;
-
-   // function to group rows into block
-   function groupRow() {
-      let uniqueBlock = [];
-      uniqueCY.map((e) => {
-         uniqueBlock.push(e.slice(0, 4));
-      });
-      uniqueBlock = [...new Set(uniqueBlock)];
-
-      let result = {};
-
-      for (var i = 0; i < uniqueBlock.length; i++) {
-         let count = 0;
-         for (var j = 0; j < uniqueCY.length; j++) {
-            if (uniqueBlock[i] === uniqueCY[j].slice(0, 4)) {
-               count++;
-            }
-            result[`${uniqueBlock[i]}`] = count;
-         }
-      }
-
-      return result;
-   }
-
-   const RowCount = groupRow();
 
    function Initialize() {
       let Sample = [];
@@ -95,22 +40,18 @@ function logic(fileName, score, difficulty) {
 
    // function to calculate deviation, this should return the whole deviation i/o partial deviation
    function _deviation(Sam) {
-      let Deviation = [];
-      for (var i = 0; i < Sam.length; i++) {
-         const newObject = {
-            RowCollection: [],
-            Value: [],
-         };
-         Deviation[i] = newObject;
-         if (Sam[i].length != 0) {
-            for (var j = 0; j < Sam[i].length; j++) {
-               newObject.RowCollection.push(Sam[i][j].ID.slice(0, 4));
-               newObject.Value.push(Sam[i][j].Value);
+      let Deviation = new Array(bayLength);
+      for (var i = 0; i < Deviation.length; i++) {
+         Deviation[i] = new Array(uniqueWeightClass.length + 1);
+      }
+      for (var i = 0; i <= uniqueWeightClass.length; i++) {
+         for (var j = 0; j < bayLength; j++) {
+            if (i < uniqueWeightClass.length) {
+               Deviation[j][i] = sumMultipleArray(Sam[j], i) - targetBay[j][i];
+            } else {
+               Deviation[j][i] = sumMultipleArray(Sam[j], i) - targetBay[j][i] * Sam[j].length;
             }
-         } else {
-            newObject.Value.push(dummyValue);
          }
-         newObject.Value = minusArrays(sumAll(newObject.Value), targetBay[i], newObject.RowCollection.length);
       }
 
       return Deviation;
@@ -127,15 +68,16 @@ function logic(fileName, score, difficulty) {
       return [Giver, Receiver];
    }
 
-   function SpliceGiver(Sam, Deviation) {
+   function SpliceGiver(_Sam, _Deviation) {
+      let Deviation = _Deviation;
+      let Sam = _Sam;
       const Giver = Giver_Receiver(Deviation)[0];
 
       let largest = [];
       let finalCandidatesPool = [];
-
       for (var i = 0; i < Giver.length; i++) {
          let pos = Giver[i];
-         largest.push(getLargest(Deviation[pos].Value));
+         largest.push(getLargest(Deviation[pos]));
       }
 
       for (var i = 0; i < Giver.length; i++) {
@@ -146,21 +88,20 @@ function logic(fileName, score, difficulty) {
          let candidatePool = [];
 
          for (var j = 0; j < Sam[pos].length; j++) {
-            if (
-               Math.abs(Deviation[pos].Value[elementPos] - Sam[pos][j].Value[elementPos]) <=
-               Deviation[pos].Value[elementPos]
-            ) {
+            if (Math.abs(Deviation[pos][elementPos] - Sam[pos][j][elementPos]) <= Deviation[pos][elementPos]) {
                let candidate = Sam[pos][j];
                candidatePool.push(candidate);
                finalCandidatesPool.push(candidate);
 
-               Deviation[pos].Value[elementPos] -= Sam[pos][j].Value[elementPos];
+               Deviation[pos][elementPos] -= Sam[pos][j][elementPos];
             }
          }
 
          for (var l = 0; l < candidatePool.length; l++) {
-            let spliceIndex = compare(candidatePool[l], Sam[pos]);
-            Sam[pos].splice(spliceIndex, 1);
+            let spliceIndex = compareArrays(candidatePool[l], Sam[pos]);
+            if (spliceIndex > -1) {
+               Sam[pos].splice(spliceIndex, 1);
+            }
          }
       }
 
@@ -170,9 +111,7 @@ function logic(fileName, score, difficulty) {
    function AddToReceiver(Sam, finalCandidatesPool) {
       let Deviation = _deviation(Sam);
       let Receiver = Giver_Receiver(Deviation)[1];
-      finalCandidatesPool = shuffle(finalCandidatesPool);
-
-      const standardPoint = point_element / (4 + uniqueWeightClass.length);
+      const standardPoint = 0.4 * (10 / (4 + uniqueWeightClass.length));
       const maxDevi = 100;
 
       for (var i = 0; i < finalCandidatesPool.length; i++) {
@@ -182,24 +121,22 @@ function logic(fileName, score, difficulty) {
             let points = 0;
             let pos = Receiver[j];
 
-            // ****************** Total ******************//
-            if (arraySum(Deviation[pos].Value) < 0) {
-               points += point_total;
+            // ****************** check here ******************
+            if (arraySum(Deviation[pos]) < 0) {
+               points += 4;
             }
-            // ****************** SameBlock ******************//
-            if (Deviation[pos].RowCollection.indexOf(finalCandidatesPool[i].ID.slice(0, 4)) > -1) {
-               points += point_sameBlock;
-            }
+            // ****************** check here ******************
 
-            // ****************** Distance ******************//
-            if (finalCandidatesPool[i].Value[uniqueWeightClass.length] === targetBay[pos][uniqueWeightClass.length]) {
-               points += point_distance;
+            // ****************** YARD BLOCK ******************//
+            if (finalCandidatesPool[i][uniqueWeightClass.length] == targetBay[pos][uniqueWeightClass.length]) {
+               points += 2;
             }
 
             for (var k = 0; k < uniqueWeightClass.length; k++) {
-               let ele = Math.abs(Deviation[pos].Value[k] + finalCandidatesPool[i].Value[k]);
-               if (ele <= Math.abs(Deviation[pos].Value[k])) {
+               let ele = Math.abs(Deviation[pos][k] + finalCandidatesPool[i][k]);
+               if (ele <= Math.abs(Deviation[pos][k])) {
                   if (k == 0 || k == uniqueWeightClass.length - 1) {
+                     // points += standardPoint * 3;
                      points += (3 * standardPoint * (maxDevi - ele)) / maxDevi;
                   } else {
                      points += (standardPoint * (maxDevi - ele)) / maxDevi;
@@ -231,49 +168,29 @@ function logic(fileName, score, difficulty) {
 
    function Cost(Sam) {
       const Deviation = _deviation(Sam);
-
       let targetBayAmount = [];
       let totalContainer = 0;
+      const standardPoint = 0.5 * (10 / (4 + uniqueWeightClass.length));
+      const maxDevi = 10;
+
       for (var i = 0; i < targetBay.length; i++) {
          targetBayAmount[i] = arraySum(targetBay[i]);
          totalContainer += targetBayAmount[i];
       }
-
-      const standardPoint = point_element / (4 + uniqueWeightClass.length);
-      const maxDevi = 10;
 
       let partialCost = [];
       let totalCost = 0;
 
       for (var i = 0; i < Deviation.length; i++) {
          let elementPoints = 0;
-
-         // point_total
-         let sumPoints = arraySum(Deviation[i].Value) == 0 ? point_total : 0;
-
-         //point_sameBlock
-         let uniqueBlock = [];
-         Deviation[i].RowCollection.map((e) => {
-            uniqueBlock.push(e.slice(0, 4));
-         });
-         uniqueBlock = [...new Set(uniqueBlock)];
-
-         let sameBlockPoints = 0;
-         for (var j = 0; j < Deviation[i].RowCollection.length; j++) {
-            const rowName = Deviation[i].RowCollection[j];
-            sameBlockPoints += 1 / RowCount[rowName];
-         }
-         sameBlockPoints = (point_sameBlock * sameBlockPoints) / uniqueBlock.length;
-         // console.log(`Same Block Point is: ${sameBlockPoints}`);
-
-         for (var j = 0; j < Deviation[i].Value.length; j++) {
-            let ele = Math.abs(Deviation[i].Value[j]);
-
+         let sumPoints = arraySum(Deviation[i]) == 0 ? 4 : 0;
+         for (var j = 0; j < Deviation[i].length; j++) {
+            let ele = Math.abs(Deviation[i][j]);
             if (ele <= maxDevi) {
-               if (j == 0 || j == Deviation[i].Value.length - 2) {
+               if (j == 0 || j == Deviation[i].length - 2) {
                   elementPoints += (3 * standardPoint * (maxDevi - ele)) / maxDevi;
-               } else if (j == Deviation[i].Value.length - 1) {
-                  elementPoints += (point_distance * (maxDevi - ele)) / maxDevi;
+               } else if (j == Deviation[i].length - 1) {
+                  elementPoints += (1 * (maxDevi - ele)) / maxDevi;
                } else {
                   elementPoints += (standardPoint * (maxDevi - ele)) / maxDevi;
                }
@@ -281,7 +198,8 @@ function logic(fileName, score, difficulty) {
                elementPoints = 0;
             }
          }
-         partialCost[i] = elementPoints + sumPoints + sameBlockPoints;
+         // console.log(`element point is: ${elementPoints}`);
+         partialCost[i] = elementPoints + sumPoints;
          totalCost += (partialCost[i] * targetBayAmount[i]) / totalContainer;
       }
 
@@ -289,16 +207,14 @@ function logic(fileName, score, difficulty) {
    }
 
    function simulatedAnnealing(targetCost) {
-      const startTemp = 10 ** 20;
+      const startTemp = 10 ** 100;
       const endTemp = 0.01;
       const coolingRate = 0.999;
 
       let currentTemp = startTemp;
 
       let lastSample = Initialize();
-      for (var i = 0; i < lastSample.length; i++) {
-         lastSample[i] = shuffle(lastSample[i]);
-      }
+      lastSample = shuffle(lastSample);
       let lastCost = Cost(lastSample);
 
       let bestSample = lastSample;
@@ -342,90 +258,142 @@ function logic(fileName, score, difficulty) {
    }
 
    function restart(targetScore) {
-      let [bestSample, bestCost, count] = simulatedAnnealing(targetScore);
+      let [res1, res2, count] = simulatedAnnealing(targetScore);
       let masterCount = 0;
 
       let restartTime = 0;
-      while (Cost(bestSample) < targetScore) {
-         [bestSample, bestCost, count] = simulatedAnnealing(targetScore);
+      while (Cost(res1) < targetScore) {
+         [res1, res2, count] = simulatedAnnealing(targetScore);
          masterCount += count;
          restartTime++;
          console.log(`restartTime is ${restartTime}`);
 
-         if (restartTime > 10) {
+         if (restartTime > 20) {
             targetScore -= 0.1;
+            //[res1, res2, count] = simulatedAnnealing(targetScore);
             restartTime = 0;
          }
       }
-      console.log(`best cost is: ${bestCost}`);
+      console.log(`best cost is: ${res2}`);
+
+      const deviaaaa = _deviation(res1);
+      let sumDeviation = [];
+      for (var i = 0; i < deviaaaa.length; i++) {
+         sumDeviation[i] = arraySum(deviaaaa[i]);
+      }
+      // console.log(sumDeviation);
+
       console.log(`The total loops it took is: ${masterCount}`);
-
-      return bestSample;
+      return res1;
    }
 
-   function traceContainerNumber(Sam) {
-      const Deviation = _deviation(Sam);
-      let devi = [];
-
-      // uniqueBay
-      for (var i = 0; i < uniqueBay.length; i++) {
+   function tracebackCY(Sam) {
+      let Result = {};
+      for (var i = 0; i < Sam.length; i++) {
          let bayName = uniqueBay[i];
-         let tem = {};
-         tem["ID"] = bayName;
-         let miniTotal = 0;
-
-         for (var j = 0; j < Deviation[i].Value.length; j++) {
-            if (j < Deviation[i].Value.length - 1) {
-               tem[`WeightClass${j + 1}`] = Deviation[i].Value[j];
-               miniTotal += Deviation[i].Value[j];
-            } else {
-               tem["Block"] = Deviation[i].Value[j];
-            }
-         }
-         tem["Total"] = miniTotal;
-         devi.push(tem);
-      }
-      // console.log(devi);
-
-      const ContainerGroup = Grouping();
-      let result = [];
-
-      for (var i = 0; i < uniqueBay.length; i++) {
-         let bayName = uniqueBay[i];
-         let tem = {};
-         tem["ID"] = bayName;
-         tem["Value"] = [];
+         let temp = [];
          for (var j = 0; j < Sam[i].length; j++) {
-            // tem["Value"].push(Sam[i][j].ID);
-            const candidate = ContainerGroup[Sam[i][j].ID];
-            tem["Value"].push(...candidate);
-         }
-         result.push(tem);
-      }
-
-      return [devi, result];
-   }
-
-   // function to group containers based on Yard Row
-   function Grouping() {
-      let tem = {};
-      for (var i = 0; i < uniqueCY.length; i++) {
-         tem[`${uniqueCY[i]}`] = [];
-         for (var j = 0; j < yardInput.length; j++) {
-            if (yardInput[j].Position.slice(0, 5) === uniqueCY[i]) {
-               tem[`${uniqueCY[i]}`].push(yardInput[j].ContainerNumber);
+            let position = -1;
+            const pos = compareArrays(Sam[i][j], targetCY);
+            if (pos != -1) {
+               position = pos;
+               temp.push(uniqueCY[position]);
+               targetCY.splice(position, 1);
+               uniqueCY.splice(position, 1);
             }
          }
+
+         Result[bayName] = temp.sort();
+      }
+      // for (var i = 0; i < Sam.length; i++) {
+      //    console.table(Sam[i]);
+      // }
+      return Result;
+   }
+
+   function getYardBlock() {
+      const block = 4;
+      const row = 5;
+      let yardBlock = {};
+
+      for (var i = 0; i < uniqueCY.length; i++) {
+         let yardComponent = [];
+         for (var j = 0; j < yardInput.length; j++) {
+            if (yardInput[j].Position.slice(0, row) == uniqueCY[i]) {
+               yardComponent.push(yardInput[j].ContainerNumber);
+            }
+         }
+         yardBlock[uniqueCY[i]] = yardComponent;
       }
 
-      return tem;
+      return yardBlock;
+   }
+
+   const yardBlock = getYardBlock();
+
+   function traceContainerNumber() {
+      let bestSample = restart(score);
+      let result = tracebackCY(bestSample);
+      let bestDeviation = _deviation(bestSample);
+
+      for (var i = 0; i < bestDeviation.length; i++) {
+         const length = bestDeviation[i].length;
+         const _sum = arraySum(bestDeviation[i]);
+         bestDeviation[i][length] = _sum;
+      }
+
+      function addKeys(array) {
+         let result = {};
+         for (var i = 0; i < array.length; i++) {
+            if (i < uniqueWeightClass.length) {
+               result[`WeightClass${i + 1}`] = array[i];
+            } else if (i == uniqueWeightClass.length) {
+               result["Block"] = array[i];
+            } else {
+               result["Total"] = array[i];
+            }
+         }
+         return result;
+      }
+
+      let _bestDeviation = [];
+      for (var i = 0; i < uniqueBay.length; i++) {
+         let tempBay = {};
+         tempBay["ID"] = uniqueBay[i];
+         let tempObj = { ...tempBay, ...addKeys(bestDeviation[i]) };
+         _bestDeviation.push(tempObj);
+         // _bestDeviation.push({ ID: uniqueBay[i], value: addKeys(bestDeviation[i]) });
+         // _bestDeviation[uniqueBay[i]] = bestDeviation[i];
+      }
+      console.log("the result is:");
+      console.table(_bestDeviation);
+
+      let finalResult = {};
+
+      for (var i = 0; i < uniqueBay.length; i++) {
+         let component = [];
+         for (var j = 0; j < result[uniqueBay[i]].length; j++) {
+            component.push(...yardBlock[result[uniqueBay[i]][j]]);
+         }
+         finalResult[uniqueBay[i]] = component;
+      }
+
+      let finaly = [];
+      let tempp = Object.keys(finalResult);
+      for (var i = 0; i < tempp.length; i++) {
+         let temp = {};
+         temp["ID"] = tempp[i];
+         finaly.push({ ID: tempp[i], Value: finalResult[tempp[i]] });
+      }
+
+      // console.log(finaly);
+
+      return [_bestDeviation, finaly];
    }
 
    const startTime = new Date();
 
-   const bestSample = restart(score);
-   const [devi, result] = traceContainerNumber(bestSample);
-   console.table(devi);
+   const [devi, result] = traceContainerNumber();
 
    const endTime = new Date();
    console.log(`the time it took is: ${(endTime - startTime) / 1000} seconds`);
@@ -440,9 +408,6 @@ function logic(fileName, score, difficulty) {
    } catch (error) {
       console.log(error);
    }
-
-   console.log(point_element);
-   console.log(point_sameBlock);
 
    return [devi, result];
 }

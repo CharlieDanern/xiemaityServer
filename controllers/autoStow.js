@@ -4,6 +4,7 @@ import { logic } from "../logic/refinedSA.js";
 import { defaultData } from "./defaultData.js";
 import { defaultCont } from "./defaultCont.js";
 import fs from "fs";
+import { Worker } from "worker_threads";
 
 export const autoStow = (req, res) => {
    res.send("hi bro");
@@ -30,15 +31,25 @@ export const upload = (req, res) => {
 };
 
 export const result = (req, res) => {
-   // res.status(200).json({ devi, finalResult });
+   const fileName = req.body.fileName;
+   const score = req.body.score;
+   const dif = req.body.dif;
+
    res.status(200).json({ msg: "Algorithm started" });
-   const [devi, finalResult] = logic(req.body.fileName, req.body.score);
+   const worker = new Worker("./controllers/algo.js", { workerData: { fileName, score } });
+
+   // worker.on("message", (data) => {
+   //    res.status(200).json(data);
+   // });
 };
 
 export const resultFileNameIndicator = (req, res) => {
+   console.log("client opened connection");
    res.header("Cache-Control", "private, no-cache, no-store, must-revalidate");
    res.header("Expires", "-1");
    res.header("Pragma", "no-cache");
+   // res.setHeader("Access-Control-Allow-Origin", "*");
+   // res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
    res.setHeader("Content-Type", "text/event-stream");
    const __filename = fileURLToPath(import.meta.url);
