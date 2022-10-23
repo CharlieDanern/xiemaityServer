@@ -36,7 +36,7 @@ export const result = (req, res) => {
    const dif = req.body.dif;
 
    res.status(200).json({ msg: "Algorithm started" });
-   const worker = new Worker("./controllers/algo.js", { workerData: { fileName, score } });
+   const worker = new Worker("./controllers/algo.js", { workerData: { fileName, score, dif } });
 
    // worker.on("message", (data) => {
    //    res.status(200).json(data);
@@ -48,6 +48,7 @@ export const resultFileNameIndicator = (req, res) => {
    res.header("Cache-Control", "private, no-cache, no-store, must-revalidate");
    res.header("Expires", "-1");
    res.header("Pragma", "no-cache");
+   res.setHeader("X-Accel-Buffering", "no");
    // res.setHeader("Access-Control-Allow-Origin", "*");
    // res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
@@ -60,12 +61,12 @@ export const resultFileNameIndicator = (req, res) => {
       JSON.parse(fs.readFileSync(`${__dirname}/logic/indicator/indicator.json`, "utf8"))
    );
 
-   const intervalID = setInterval(() => {
-      res.write("data: " + `${dataToSend}\n\n`);
-   }, 3 * 1000);
+   // const intervalID = setInterval(() => {
+   res.write("data: " + `${dataToSend}\n\n`);
+   // }, 3 * 1000);
    res.on("close", () => {
       console.log("client closed connection");
-      clearInterval(intervalID);
+      // clearInterval(intervalID);
       res.end();
    });
 };
